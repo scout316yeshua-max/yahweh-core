@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  api-gateway:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    depends_on:
+      - nlp-inference
+    volumes:
+      - ./config/nginx.conf:/etc/nginx/nginx.conf:ro
+
+  nlp-inference:
+    build: 
+      context: ./nlp-engine
+      dockerfile: Dockerfile
+    environment:
+      - DB_HOST=core-db
+      - NEO4J_URI=bolt://variant-db:7687
+    ports:
+      - "5000:5000"
+    depends_on:
+      - core-db
+      - variant-db
+
+  core-db:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=securepassword
+      - POSTGRES_DB=biblical_core
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db/postgres:/docker-entrypoint-initdb.d
+
+  variant-db:
+    image: neo4j:5
+    environment:
+      - NEO4J_AUTH=neo4j/securepassword
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - ./db/neo4j/data:/data
